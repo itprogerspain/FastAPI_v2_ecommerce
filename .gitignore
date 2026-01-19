@@ -168,3 +168,8 @@ debug_sql.py
 init_db.py
 info.log
 alembic
+
+
+# Temporary tree/debug files
+tree_filtered.txt
+show_tree.py
