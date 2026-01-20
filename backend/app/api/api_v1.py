@@ -6,7 +6,7 @@ api_v1_router = APIRouter(prefix="/api/v1")  # versioning prefix
 
 # Include all routers
 api_v1_router.include_router(categories.router)
-# api_v1_router.include_router(products.router)
+api_v1_router.include_router(products.router)
 # api_v1_router.include_router(users.router)
 # api_v1_router.include_router(orders.router)
 # api_v1_router.include_router(cart.router)
