@@ -173,3 +173,4 @@ alembic
 # Temporary tree/debug files
 tree_filtered.txt
 show_tree.py
+create_tables_sql.py
