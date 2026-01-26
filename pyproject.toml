@@ -1,0 +1,23 @@
+[tool.ruff]
+# Let Ruff check the whole project
+src = ["backend/app"]
+
+# Use style compatible with Black
+line-length = 88
+extend-ignore = []
+
+# Enable automatic import sorting (like isort)
+# I = Import-related rules
+select = ["E", "F", "I"]
+
+# Allow Ruff to automatically fix what it can
+fixable = true
+
+# You can disable specific rules if needed
+# ignore = ["F401"]  # example: ignore unused imports
+
+
+
+# ruff check
+# ruff check --fix
+# ruff check backend/app/models
