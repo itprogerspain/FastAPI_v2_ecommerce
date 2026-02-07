@@ -174,3 +174,4 @@ alembic
 tree_filtered.txt
 show_tree.py
 create_tables_sql.py
+study_fastapi.py
