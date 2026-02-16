@@ -9,7 +9,7 @@ logs/
 
 # C extensions
 *.so
-*.json
+#*.json
 
 # Distribution / packaging
 .Python
@@ -18,11 +18,13 @@ develop-eggs/
 dist/
 downloads/
 eggs/
+exports/
 .eggs/
 lib/
 lib64/
 parts/
 sdist/
+tmp/
 var/
 wheels/
 share/python-wheels/
@@ -167,7 +169,7 @@ cython_debug/
 debug_sql.py
 init_db.py
 info.log
-alembic
+#alembic
 
 
 # Temporary tree/debug files
