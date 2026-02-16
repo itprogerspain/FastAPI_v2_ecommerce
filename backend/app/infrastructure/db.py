@@ -1,45 +1,39 @@
+from typing import Generator
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 
 # Database connection string for SQLite
-DATABASE_URL = "sqlite:///./db/ecommerce2.db"
+DATABASE_URL = "sqlite:///./db/ecommerce.db"
 
 # Create the SQLAlchemy Engine
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(
+    DATABASE_URL,
+    echo=True,
+    connect_args={"check_same_thread": False},  # Required for SQLite
+)
 
-SessionLocal = sessionmaker(bind=engine)
+# Create session factory
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+)
+
 
 class Base(DeclarativeBase):
+    """
+    Base class for all ORM models.
+    """
+
     pass
 
-# # на будущее
-#
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
-# from fastapi import Depends
-#
-# # Database connection string for SQLite
-# DATABASE_URL = "sqlite:///./db/ecommerce2.db"
-#
-# # Create the SQLAlchemy Engine
-# engine = create_engine(
-#     DATABASE_URL,
-#     echo=True,
-#     connect_args={"check_same_thread": False}  # нужен для SQLite
-# )
-#
-# # Create a configured "Session" class
-# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-#
-# # Base class for declarative models (SQLAlchemy 2.0 style)
-# class Base(DeclarativeBase):
-#     pass
-#
-# # Dependency to get DB session for FastAPI
-# def get_db() -> Session:
-#     db = SessionLocal()
-#     try:
-#         yield db
-#     finally:
-#         db.close()
 
+def get_db() -> Generator[Session, None, None]:
+    """
+    Provide a database session per request.
+    """
+    db: Session = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

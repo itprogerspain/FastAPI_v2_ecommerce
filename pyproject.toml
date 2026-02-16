@@ -1,20 +1,18 @@
+[tool.black]
+line-length = 88  # Maximum line length for Black
+
+[tool.isort]
+profile = "black"  # Make import sorting compatible with Black
+
 [tool.ruff]
-# Let Ruff check the whole project
-src = ["backend/app"]
+src = ["study_fastapi"]  # Folder with study files
+line-length = 88         # Maximum line length for Ruff
+fix = true               # Allow Ruff to automatically fix what it can
 
-# Use style compatible with Black
-line-length = 88
-extend-ignore = []
+[tool.ruff.lint]
+select = ["E", "F", "I"]      # Enable specific checks (E=errors, F=pyflakes, I=imports)
+extend-ignore = []             # Additional rules to ignore, if needed
 
-# Enable automatic import sorting (like isort)
-# I = Import-related rules
-select = ["E", "F", "I"]
-
-# Allow Ruff to automatically fix what it can
-fixable = true
-
-# You can disable specific rules if needed
-# ignore = ["F401"]  # example: ignore unused imports
 
 
 
