@@ -13,18 +13,18 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-async def get_all_categories():
+@router.get(
+    "/",
+    response_model=list[CategorySchema],
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_categories(
+    service: CategoryService = Depends(get_category_service),
+):
     """
-    Retrieve a complete list of all product categories.
-
-    Returns a stub response with status, data, and message.
+    Retrieve a complete list of all active product categories.
     """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder for actual category list
-        "message": "Retrieved all categories successfully (stub)",
-    }
+    return service.get_all_categories()
 
 
 @router.post(
@@ -57,15 +57,15 @@ async def update_category(category_id: int):
     }
 
 
-@router.delete("/{category_id}")
-async def delete_category(category_id: int):
+@router.delete(
+    "/{category_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def delete_category(
+    category_id: int,
+    service: CategoryService = Depends(get_category_service),
+):
     """
-    Delete a category by its ID.
-
-    Returns a stub response with status, data, and message.
+    Logically delete a category by setting is_active=False.
     """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder since category is deleted
-        "message": f"Category with ID {category_id} deleted successfully (stub)",
-    }
+    return service.delete_category(category_id)

@@ -28,6 +28,15 @@ class Base(DeclarativeBase):
     pass
 
 
+# Dynamically import all models so SQLAlchemy can see them
+import importlib
+import pkgutil
+from app.models import db as models_db  # points to your models/db folder
+
+for loader, module_name, is_pkg in pkgutil.iter_modules(models_db.__path__):
+    importlib.import_module(f"app.models.db.{module_name}")
+
+
 def get_db() -> Generator[Session, None, None]:
     """
     Provide a database session per request.

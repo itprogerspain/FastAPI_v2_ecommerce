@@ -28,3 +28,23 @@ class CategoryService:
                 )
 
         return self.repository.create(category_data.model_dump())
+
+    def get_all_categories(self):
+        """
+        Retrieve all active categories.
+        """
+        return self.repository.get_all_active()
+
+    def delete_category(self, category_id: int):
+        """
+        Logically delete a category.
+        """
+        category = self.repository.soft_delete(category_id)
+
+        if category is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Category not found",
+            )
+
+        return {"status": "success", "message": "Category marked as inactive"}

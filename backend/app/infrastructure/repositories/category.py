@@ -31,3 +31,25 @@ class CategoryRepository:
         self.db.commit()
         self.db.refresh(category)
         return category
+
+    def get_all_active(self) -> list[Category]:
+        """
+        Retrieve all active categories.
+        """
+        stmt = select(Category).where(Category.is_active.is_(True))
+        return list(self.db.scalars(stmt))
+
+    def soft_delete(self, category_id: int) -> Category | None:
+        """
+        Logically delete a category by setting is_active=False.
+        """
+        category = self.get_active_by_id(category_id)
+
+        if category is None:
+            return None
+
+        category.is_active = False
+        self.db.commit()
+        self.db.refresh(category)
+
+        return category
