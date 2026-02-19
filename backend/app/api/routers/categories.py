@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, status
 from app.application.categories.schemas import (
     Category as CategorySchema,
     CategoryCreate,
+    CategoryUpdate,
 )
 from app.application.categories.service import CategoryService
 from app.api.deps import get_category_service
@@ -43,18 +44,19 @@ async def create_category(
     return service.create_category(category)
 
 
-@router.put("/{category_id}")
-async def update_category(category_id: int):
+@router.put("/{category_id}", response_model=CategorySchema)
+def update_category(
+    category_id: int,
+    category_data: CategoryUpdate,
+    service: CategoryService = Depends(get_category_service),
+):
     """
-    Update the details of a category by its ID.
+    Update an existing category.
 
-    Returns a stub response with status, data, and message.
+    Only name and parent_id can be modified.
+    The category must be active.
     """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder for the updated category
-        "message": f"Category with ID {category_id} updated successfully (stub)",
-    }
+    return service.update_category(category_id, category_data)
 
 
 @router.delete(

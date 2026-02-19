@@ -1,7 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.db.category import Category
+# ORM model alias to avoid confusion with Pydantic CategorySchema
+from app.models.db.category import Category as CategoryModel
 
 
 class CategoryRepository:
@@ -12,34 +13,34 @@ class CategoryRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_active_by_id(self, category_id: int) -> Category | None:
+    def get_active_by_id(self, category_id: int) -> CategoryModel | None:
         """
         Retrieve an active category by ID.
         """
-        stmt = select(Category).where(
-            Category.id == category_id,
-            Category.is_active == True,
+        stmt = select(CategoryModel).where(
+            CategoryModel.id == category_id,
+            CategoryModel.is_active == True,
         )
         return self.db.scalars(stmt).first()
 
-    def create(self, data: dict) -> Category:
+    def create(self, data: dict) -> CategoryModel:
         """
         Create a new category in the database.
         """
-        category = Category(**data)
+        category = CategoryModel(**data)
         self.db.add(category)
         self.db.commit()
         self.db.refresh(category)
         return category
 
-    def get_all_active(self) -> list[Category]:
+    def get_all_active(self) -> list[CategoryModel]:
         """
         Retrieve all active categories.
         """
-        stmt = select(Category).where(Category.is_active.is_(True))
+        stmt = select(CategoryModel).where(CategoryModel.is_active.is_(True))
         return list(self.db.scalars(stmt))
 
-    def soft_delete(self, category_id: int) -> Category | None:
+    def soft_delete(self, category_id: int) -> CategoryModel | None:
         """
         Logically delete a category by setting is_active=False.
         """
@@ -52,4 +53,22 @@ class CategoryRepository:
         self.db.commit()
         self.db.refresh(category)
 
+        return category
+
+    def update(self, category: CategoryModel, data: dict) -> CategoryModel:
+        """
+        Update an existing category with provided data.
+
+        Args:
+            category: Existing Category ORM object.
+            data: Dictionary of fields to update.
+
+        Returns:
+            Updated Category instance.
+        """
+        for field, value in data.items():
+            setattr(category, field, value)
+
+        self.db.commit()
+        self.db.refresh(category)
         return category
