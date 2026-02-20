@@ -1,91 +1,80 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, status
 
-# Create a router with a prefix and a tag
+from app.application.products.schemas import (
+    Product as ProductSchema,
+    ProductCreate,
+)
+from app.application.products.service import ProductService
+from app.api.deps import get_product_service
+
 router = APIRouter(
     prefix="/products",
     tags=["products"],
 )
 
 
-@router.get("/")
-async def get_all_products():
-    """
-    Retrieve a complete list of all products.
-
-    Returns a stub response with status, data, and message.
-    """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder for actual product list
-        "message": "Retrieved all products successfully (stub)"
-    }
+@router.post(
+    "/",
+    response_model=ProductSchema,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_product(
+    product_data: ProductCreate,
+    service: ProductService = Depends(get_product_service),
+):
+    return service.create_product(product_data)
 
 
-@router.post("/")
-async def create_product():
-    """
-    Create a new product.
-
-    Returns a stub response with status, data, and message.
-    """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder for the created product
-        "message": "Product created successfully (stub)"
-    }
+@router.get(
+    "/",
+    response_model=list[ProductSchema],
+)
+async def get_all_products(
+    service: ProductService = Depends(get_product_service),
+):
+    return service.get_all_products()
 
 
-@router.get("/category/{category_id}")
-async def get_products_by_category(category_id: int):
-    """
-    Retrieve all products belonging to a specific category.
-
-    Returns a stub response with status, data, and message.
-    """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder for products in the category
-        "message": f"Retrieved products for category ID {category_id} (stub)"
-    }
+@router.get(
+    "/category/{category_id}",
+    response_model=list[ProductSchema],
+)
+async def get_products_by_category(
+    category_id: int,
+    service: ProductService = Depends(get_product_service),
+):
+    return service.get_products_by_category(category_id)
 
 
-@router.get("/{product_id}")
-async def get_product(product_id: int):
-    """
-    Retrieve detailed information about a product by its ID.
-
-    Returns a stub response with status, data, and message.
-    """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder for product details
-        "message": f"Retrieved product with ID {product_id} successfully (stub)"
-    }
+@router.get(
+    "/{product_id}",
+    response_model=ProductSchema,
+)
+async def get_product(
+    product_id: int,
+    service: ProductService = Depends(get_product_service),
+):
+    return service.get_product(product_id)
 
 
-@router.put("/{product_id}")
-async def update_product(product_id: int):
-    """
-    Update the details of a product by its ID.
-
-    Returns a stub response with status, data, and message.
-    """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder for the updated product
-        "message": f"Product with ID {product_id} updated successfully (stub)"
-    }
+@router.put(
+    "/{product_id}",
+    response_model=ProductSchema,
+)
+async def update_product(
+    product_id: int,
+    product_data: ProductCreate,
+    service: ProductService = Depends(get_product_service),
+):
+    return service.update_product(product_id, product_data)
 
 
 @router.delete("/{product_id}")
-async def delete_product(product_id: int):
+async def delete_product(
+    product_id: int,
+    service: ProductService = Depends(get_product_service),
+):
     """
-    Delete a product by its ID.
-
-    Returns a stub response with status, data, and message.
+    Logically delete a product by setting is_active=False.
     """
-    return {
-        "status": "success",
-        "data": None,  # Placeholder since product is deleted
-        "message": f"Product with ID {product_id} deleted successfully (stub)"
-    }
+    return service.delete_product(product_id)
