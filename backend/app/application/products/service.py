@@ -22,6 +22,38 @@ class ProductService:
         self.product_repository = product_repository
         self.category_repository = category_repository
 
+    # -------------------------
+    # Internal validation helpers
+    # -------------------------
+
+    def _validate_category(self, category_id: int):
+        """
+        Validate that category exists and is active.
+        """
+        category = self.category_repository.get_active_by_id(category_id)
+        if category is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Category not found or inactive",
+            )
+        return category
+
+    def _validate_product(self, product_id: int):
+        """
+        Validate that product exists and is active.
+        """
+        product = self.product_repository.get_active_by_id(product_id)
+        if product is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Product not found or inactive",
+            )
+        return product
+
+    # -------------------------
+    # Public service methods
+    # -------------------------
+
     def create_product(self, product_data: ProductCreate) -> ProductSchema:
         """
         Create a new product.
@@ -32,12 +64,7 @@ class ProductService:
         category_id = product_data.category_id
 
         # Validate category existence
-        category = self.category_repository.get_active_by_id(category_id)
-        if category is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Category not found or inactive",
-            )
+        self._validate_category(category_id)
 
         # Prepare data for creation
         data = product_data.model_dump()
@@ -57,12 +84,7 @@ class ProductService:
         """
 
         # Validate category existence
-        category = self.category_repository.get_active_by_id(category_id)
-        if category is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Category not found or inactive",
-            )
+        self._validate_category(category_id)
 
         return self.product_repository.get_active_by_category(category_id)
 
@@ -75,20 +97,10 @@ class ProductService:
         """
 
         # Validate product existence
-        product = self.product_repository.get_active_by_id(product_id)
-        if product is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Product not found or inactive",
-            )
+        product = self._validate_product(product_id)
 
         # Validate category existence
-        category = self.category_repository.get_active_by_id(product.category_id)
-        if category is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Category not found or inactive",
-            )
+        self._validate_category(product.category_id)
 
         return product
 
@@ -102,21 +114,10 @@ class ProductService:
         """
 
         # Validate product existence
-        product = self.product_repository.get_active_by_id(product_id)
-        if product is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Product not found or inactive",
-            )
+        product = self._validate_product(product_id)
 
         # Validate category existence
-        category_id = product_data.category_id
-        category = self.category_repository.get_active_by_id(category_id)
-        if category is None:
-            raise HTTPException(
-                status_code=400,
-                detail="Category not found or inactive",
-            )
+        self._validate_category(product_data.category_id)
 
         # Perform update
         return self.product_repository.update(

@@ -17,6 +17,59 @@ class CategoryService:
     def __init__(self, repository: CategoryRepository):
         self.repository = repository
 
+    # -------------------------
+    # Internal validation helpers
+    # -------------------------
+
+    def _validate_category(self, category_id: int):
+        """
+        Validate that category exists and is active.
+        """
+        category = self.repository.get_active_by_id(category_id)
+        if category is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Category not found",
+            )
+        return category
+
+    def _validate_parent(self, parent_id: int, category_id: int | None = None):
+        """
+        Validate parent category rules:
+        - Parent must exist
+        - Cannot be the same as the category itself
+        - Cannot create a direct cycle
+        """
+        # Prevent category from being its own parent
+        if category_id is not None and parent_id == category_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Category cannot be its own parent",
+            )
+
+        parent = self.repository.get_active_by_id(parent_id)
+        if parent is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Parent category not found",
+            )
+
+        # Prevent direct cyclic relationship: parent.parent == category
+        if (
+            category_id is not None
+            and getattr(parent, "parent_id", None) == category_id
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Cyclical relationship detected",
+            )
+
+        return parent
+
+    # -------------------------
+    # Public service methods
+    # -------------------------
+
     def create_category(self, category_data: CategoryCreate) -> CategorySchema:
         """
         Create a new category with validation.
@@ -28,12 +81,7 @@ class CategoryService:
 
         # Validate parent category if provided
         if parent_id is not None:
-            parent = self.repository.get_active_by_id(parent_id)
-            if parent is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Parent category not found",
-                )
+            self._validate_parent(parent_id)
 
         # Create category
         return self.repository.create(category_data.model_dump())
@@ -77,38 +125,13 @@ class CategoryService:
         """
 
         # Validate category existence
-        category = self.repository.get_active_by_id(category_id)
-        if category is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Category not found",
-            )
+        category = self._validate_category(category_id)
 
         parent_id = data.parent_id
 
         # Validate parent category if provided
         if parent_id is not None:
-
-            # Prevent category from being its own parent
-            if parent_id == category.id:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Category cannot be its own parent",
-                )
-
-            parent = self.repository.get_active_by_id(parent_id)
-            if parent is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Parent category not found",
-                )
-
-            # Prevent direct cyclic relationship: parent.parent == category
-            if getattr(parent, "parent_id", None) == category.id:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Cyclical relationship detected",
-                )
+            self._validate_parent(parent_id, category.id)
 
         # Perform update
         return self.repository.update(category, data.model_dump())
