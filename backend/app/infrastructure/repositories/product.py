@@ -1,9 +1,13 @@
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-# ORM model alias to avoid confusion with Pydantic Product schema
 from app.models.db.product import Product as ProductModel
 from app.models.db.category import Category as CategoryModel
+
+# Common reusable conditions for cleaner queries
+ACTIVE_PRODUCT = ProductModel.is_active.is_(True)
+ACTIVE_CATEGORY = CategoryModel.is_active.is_(True)
+IN_STOCK = ProductModel.stock > 0
 
 
 class ProductRepository:
@@ -14,30 +18,41 @@ class ProductRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    def _base_query(self):
+        """
+        Base query joining Product and Category with active filters.
+        """
+        return (
+            select(ProductModel)
+            .join(CategoryModel)
+            .where(ACTIVE_PRODUCT, ACTIVE_CATEGORY)
+        )
+
     def get_active_by_id(self, product_id: int) -> ProductModel | None:
         """
-        Retrieve an active product by ID.
+        Retrieve an active product by ID with an active category.
         """
-        stmt = select(ProductModel).where(
-            ProductModel.id == product_id,
-            ProductModel.is_active.is_(True),
-        )
+        stmt = self._base_query().where(ProductModel.id == product_id).limit(1)
         return self.db.scalars(stmt).first()
 
     def get_all_active(self) -> list[ProductModel]:
         """
-        Retrieve all active products.
+        Retrieve all active products with active categories and stock > 0.
         """
-        stmt = select(ProductModel).where(ProductModel.is_active.is_(True))
+        stmt = self._base_query().where(IN_STOCK).order_by(ProductModel.id)
         return list(self.db.scalars(stmt))
 
     def get_active_by_category(self, category_id: int) -> list[ProductModel]:
         """
-        Retrieve active products by category ID.
+        Retrieve active products by category ID with active category and stock > 0.
         """
-        stmt = select(ProductModel).where(
-            ProductModel.category_id == category_id,
-            ProductModel.is_active.is_(True),
+        stmt = (
+            self._base_query()
+            .where(
+                ProductModel.category_id == category_id,
+                IN_STOCK,
+            )
+            .order_by(ProductModel.id)
         )
         return list(self.db.scalars(stmt))
 
@@ -53,10 +68,20 @@ class ProductRepository:
 
     def update(self, product: ProductModel, data: dict) -> ProductModel:
         """
-        Update existing product fields.
+        Update existing product fields safely.
         """
+        allowed_fields = {
+            "name",
+            "description",
+            "price",
+            "image_url",
+            "stock",
+            "category_id",
+        }
+
         for field, value in data.items():
-            setattr(product, field, value)
+            if field in allowed_fields:
+                setattr(product, field, value)
 
         self.db.commit()
         self.db.refresh(product)

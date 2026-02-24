@@ -29,14 +29,17 @@ class ProductService:
         - Validates that category exists and is active
         - Sets is_active=True by default
         """
+        category_id = product_data.category_id
 
-        category = self.category_repository.get_active_by_id(product_data.category_id)
+        # Validate category existence
+        category = self.category_repository.get_active_by_id(category_id)
         if category is None:
             raise HTTPException(
                 status_code=400,
                 detail="Category not found or inactive",
             )
 
+        # Prepare data for creation
         data = product_data.model_dump()
         data["is_active"] = True
 
@@ -53,6 +56,7 @@ class ProductService:
         Retrieve active products by category.
         """
 
+        # Validate category existence
         category = self.category_repository.get_active_by_id(category_id)
         if category is None:
             raise HTTPException(
@@ -70,6 +74,7 @@ class ProductService:
         - Validates related category is still active
         """
 
+        # Validate product existence
         product = self.product_repository.get_active_by_id(product_id)
         if product is None:
             raise HTTPException(
@@ -77,6 +82,7 @@ class ProductService:
                 detail="Product not found or inactive",
             )
 
+        # Validate category existence
         category = self.category_repository.get_active_by_id(product.category_id)
         if category is None:
             raise HTTPException(
@@ -95,6 +101,7 @@ class ProductService:
         Update existing active product.
         """
 
+        # Validate product existence
         product = self.product_repository.get_active_by_id(product_id)
         if product is None:
             raise HTTPException(
@@ -102,13 +109,16 @@ class ProductService:
                 detail="Product not found or inactive",
             )
 
-        category = self.category_repository.get_active_by_id(product_data.category_id)
+        # Validate category existence
+        category_id = product_data.category_id
+        category = self.category_repository.get_active_by_id(category_id)
         if category is None:
             raise HTTPException(
                 status_code=400,
                 detail="Category not found or inactive",
             )
 
+        # Perform update
         return self.product_repository.update(
             product,
             product_data.model_dump(),
@@ -118,8 +128,9 @@ class ProductService:
         """
         Logically delete product by setting is_active=False.
         """
-        product = self.product_repository.soft_delete(product_id)
 
+        # Validate deletion result
+        product = self.product_repository.soft_delete(product_id)
         if product is None:
             raise HTTPException(
                 status_code=404,

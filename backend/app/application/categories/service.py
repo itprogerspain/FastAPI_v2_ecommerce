@@ -24,16 +24,19 @@ class CategoryService:
         - Validates that the parent category exists if parent_id is provided.
         - Returns the created category as Pydantic schema.
         """
-        if category_data.parent_id is not None:
-            parent = self.repository.get_active_by_id(category_data.parent_id)
+        parent_id = category_data.parent_id
+
+        # Validate parent category if provided
+        if parent_id is not None:
+            parent = self.repository.get_active_by_id(parent_id)
             if parent is None:
                 raise HTTPException(
                     status_code=400,
                     detail="Parent category not found",
                 )
 
-        category = self.repository.create(category_data.model_dump())
-        return category  # FastAPI will convert CategoryModel to Pydantic CategorySchema
+        # Create category
+        return self.repository.create(category_data.model_dump())
 
     def get_all_categories(self) -> list[CategorySchema]:
         """
@@ -50,12 +53,18 @@ class CategoryService:
         Raises 404 if the category does not exist or is already inactive.
         """
         category = self.repository.soft_delete(category_id)
+
+        # Validate deletion result
         if category is None:
             raise HTTPException(
                 status_code=404,
                 detail="Category not found",
             )
-        return {"status": "success", "message": "Category marked as inactive"}
+
+        return {
+            "status": "success",
+            "message": "Category marked as inactive",
+        }
 
     def update_category(self, category_id: int, data: CategoryUpdate) -> CategorySchema:
         """
@@ -75,16 +84,19 @@ class CategoryService:
                 detail="Category not found",
             )
 
+        parent_id = data.parent_id
+
         # Validate parent category if provided
-        if data.parent_id is not None:
+        if parent_id is not None:
+
             # Prevent category from being its own parent
-            if data.parent_id == category.id:
+            if parent_id == category.id:
                 raise HTTPException(
                     status_code=400,
                     detail="Category cannot be its own parent",
                 )
 
-            parent = self.repository.get_active_by_id(data.parent_id)
+            parent = self.repository.get_active_by_id(parent_id)
             if parent is None:
                 raise HTTPException(
                     status_code=400,

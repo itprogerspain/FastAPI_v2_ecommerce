@@ -40,12 +40,15 @@ async def create_category(
     """
     Create a new category.
     """
-
     return service.create_category(category)
 
 
-@router.put("/{category_id}", response_model=CategorySchema)
-def update_category(
+@router.put(
+    "/{category_id}",
+    response_model=CategorySchema,
+    status_code=status.HTTP_200_OK,
+)
+async def update_category(
     category_id: int,
     category_data: CategoryUpdate,
     service: CategoryService = Depends(get_category_service),
