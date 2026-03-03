@@ -25,7 +25,8 @@ async def get_all_categories(
     """
     Retrieve a complete list of all active product categories.
     """
-    return service.get_all_categories()
+    # Await the async service method
+    return await service.get_all_categories()
 
 
 @router.post(
@@ -40,7 +41,8 @@ async def create_category(
     """
     Create a new category.
     """
-    return service.create_category(category)
+    # Await the async service method
+    return await service.create_category(category)
 
 
 @router.put(
@@ -59,7 +61,8 @@ async def update_category(
     Only name and parent_id can be modified.
     The category must be active.
     """
-    return service.update_category(category_id, category_data)
+    # Await the async service method
+    return await service.update_category(category_id, category_data)
 
 
 @router.delete(
@@ -73,4 +76,5 @@ async def delete_category(
     """
     Logically delete a category by setting is_active=False.
     """
-    return service.delete_category(category_id)
+    # Await the async service method
+    return await service.delete_category(category_id)

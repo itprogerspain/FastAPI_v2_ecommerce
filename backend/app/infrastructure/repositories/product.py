@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db.product import Product as ProductModel
 from app.models.db.category import Category as CategoryModel
@@ -12,13 +12,14 @@ IN_STOCK = ProductModel.stock > 0
 
 class ProductRepository:
     """
-    Repository layer for product database operations.
+    Repository layer for product database operations (Asynchronous).
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
-    def _base_query(self):
+    @staticmethod
+    def _base_query():
         """
         Base query joining Product and Category with active filters.
         """
@@ -28,21 +29,24 @@ class ProductRepository:
             .where(ACTIVE_PRODUCT, ACTIVE_CATEGORY)
         )
 
-    def get_active_by_id(self, product_id: int) -> ProductModel | None:
+    async def get_active_by_id(self, product_id: int) -> ProductModel | None:
         """
         Retrieve an active product by ID with an active category.
         """
         stmt = self._base_query().where(ProductModel.id == product_id).limit(1)
-        return self.db.scalars(stmt).first()
+        # Theoretical requirement: await scalars first, then call first()
+        result = await self.db.scalars(stmt)
+        return result.first()
 
-    def get_all_active(self) -> list[ProductModel]:
+    async def get_all_active(self) -> list[ProductModel]:
         """
         Retrieve all active products with active categories and stock > 0.
         """
         stmt = self._base_query().where(IN_STOCK).order_by(ProductModel.id)
-        return list(self.db.scalars(stmt))
+        result = await self.db.scalars(stmt)
+        return list(result.all())
 
-    def get_active_by_category(self, category_id: int) -> list[ProductModel]:
+    async def get_active_by_category(self, category_id: int) -> list[ProductModel]:
         """
         Retrieve active products by category ID with active category and stock > 0.
         """
@@ -54,19 +58,20 @@ class ProductRepository:
             )
             .order_by(ProductModel.id)
         )
-        return list(self.db.scalars(stmt))
+        result = await self.db.scalars(stmt)
+        return list(result.all())
 
-    def create(self, data: dict) -> ProductModel:
+    async def create(self, data: dict) -> ProductModel:
         """
         Create a new product in the database.
         """
         product = ProductModel(**data)
         self.db.add(product)
-        self.db.commit()
-        self.db.refresh(product)
+        await self.db.commit()
+        await self.db.refresh(product)
         return product
 
-    def update(self, product: ProductModel, data: dict) -> ProductModel:
+    async def update(self, product: ProductModel, data: dict) -> ProductModel:
         """
         Update existing product fields safely.
         """
@@ -83,19 +88,19 @@ class ProductRepository:
             if field in allowed_fields:
                 setattr(product, field, value)
 
-        self.db.commit()
-        self.db.refresh(product)
+        await self.db.commit()
+        await self.db.refresh(product)
         return product
 
-    def soft_delete(self, product_id: int) -> ProductModel | None:
+    async def soft_delete(self, product_id: int) -> ProductModel | None:
         """
         Logically delete product by setting is_active=False.
         """
-        product = self.get_active_by_id(product_id)
+        product = await self.get_active_by_id(product_id)
         if product is None:
             return None
 
         product.is_active = False
-        self.db.commit()
-        self.db.refresh(product)
+        await self.db.commit()
+        await self.db.refresh(product)
         return product

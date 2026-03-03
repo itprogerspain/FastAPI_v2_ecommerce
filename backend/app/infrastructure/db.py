@@ -3,8 +3,10 @@ from dotenv import load_dotenv
 import os
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+from app.infrastructure.base import Base
 
 # -------------------- LOAD ENVIRONMENT VARIABLES --------------------
 load_dotenv()
@@ -26,10 +28,10 @@ SessionLocal = sessionmaker(
 )
 
 
-class Base(DeclarativeBase):
-    """Base class for all ORM models."""
-
-    pass
+# class Base(DeclarativeBase):
+#     """Base class for all ORM models."""
+#
+#     pass
 
 
 # -------------------- DYNAMIC MODEL IMPORT --------------------

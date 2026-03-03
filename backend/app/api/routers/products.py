@@ -25,7 +25,7 @@ async def create_product(
     """
     Create a new product.
     """
-    return service.create_product(product_data)
+    return await service.create_product(product_data)
 
 
 @router.get(
@@ -39,7 +39,7 @@ async def get_all_products(
     """
     Retrieve all active products.
     """
-    return service.get_all_products()
+    return await service.get_all_products()
 
 
 @router.get(
@@ -54,7 +54,7 @@ async def get_products_by_category(
     """
     Retrieve active products by category.
     """
-    return service.get_products_by_category(category_id)
+    return await service.get_products_by_category(category_id)
 
 
 @router.get(
@@ -69,7 +69,7 @@ async def get_product(
     """
     Retrieve a single active product.
     """
-    return service.get_product(product_id)
+    return await service.get_product(product_id)
 
 
 @router.put(
@@ -85,7 +85,7 @@ async def update_product(
     """
     Update an existing product.
     """
-    return service.update_product(product_id, product_data)
+    return await service.update_product(product_id, product_data)
 
 
 @router.delete(
@@ -97,6 +97,6 @@ async def delete_product(
     service: ProductService = Depends(get_product_service),
 ):
     """
-    Logically delete a product by setting is_active=False.
+    Logically delete a product.
     """
-    return service.delete_product(product_id)
+    return await service.delete_product(product_id)

@@ -10,7 +10,7 @@ from app.infrastructure.repositories.category import CategoryRepository
 
 class ProductService:
     """
-    Business logic layer for products.
+    Business logic layer for products (Asynchronous).
     Handles validation and delegates database operations to repositories.
     """
 
@@ -26,11 +26,11 @@ class ProductService:
     # Internal validation helpers
     # -------------------------
 
-    def _validate_category(self, category_id: int):
+    async def _validate_category(self, category_id: int):
         """
         Validate that category exists and is active.
         """
-        category = self.category_repository.get_active_by_id(category_id)
+        category = await self.category_repository.get_active_by_id(category_id)
         if category is None:
             raise HTTPException(
                 status_code=400,
@@ -38,11 +38,11 @@ class ProductService:
             )
         return category
 
-    def _validate_product(self, product_id: int):
+    async def _validate_product(self, product_id: int):
         """
         Validate that product exists and is active.
         """
-        product = self.product_repository.get_active_by_id(product_id)
+        product = await self.product_repository.get_active_by_id(product_id)
         if product is None:
             raise HTTPException(
                 status_code=404,
@@ -54,57 +54,49 @@ class ProductService:
     # Public service methods
     # -------------------------
 
-    def create_product(self, product_data: ProductCreate) -> ProductSchema:
+    async def create_product(self, product_data: ProductCreate) -> ProductSchema:
         """
-        Create a new product.
-
-        - Validates that category exists and is active
-        - Sets is_active=True by default
+        Create a new product with validation.
         """
         category_id = product_data.category_id
 
         # Validate category existence
-        self._validate_category(category_id)
+        await self._validate_category(category_id)
 
         # Prepare data for creation
         data = product_data.model_dump()
         data["is_active"] = True
 
-        return self.product_repository.create(data)
+        return await self.product_repository.create(data)
 
-    def get_all_products(self) -> list[ProductSchema]:
+    async def get_all_products(self) -> list[ProductSchema]:
         """
         Retrieve all active products.
         """
-        return self.product_repository.get_all_active()
+        return await self.product_repository.get_all_active()
 
-    def get_products_by_category(self, category_id: int) -> list[ProductSchema]:
+    async def get_products_by_category(self, category_id: int) -> list[ProductSchema]:
         """
         Retrieve active products by category.
         """
-
         # Validate category existence
-        self._validate_category(category_id)
+        await self._validate_category(category_id)
 
-        return self.product_repository.get_active_by_category(category_id)
+        return await self.product_repository.get_active_by_category(category_id)
 
-    def get_product(self, product_id: int) -> ProductSchema:
+    async def get_product(self, product_id: int) -> ProductSchema:
         """
         Retrieve single active product.
-
-        - Validates product existence
-        - Validates related category is still active
         """
-
         # Validate product existence
-        product = self._validate_product(product_id)
+        product = await self._validate_product(product_id)
 
         # Validate category existence
-        self._validate_category(product.category_id)
+        await self._validate_category(product.category_id)
 
         return product
 
-    def update_product(
+    async def update_product(
         self,
         product_id: int,
         product_data: ProductCreate,
@@ -112,26 +104,25 @@ class ProductService:
         """
         Update existing active product.
         """
-
         # Validate product existence
-        product = self._validate_product(product_id)
+        product = await self._validate_product(product_id)
 
         # Validate category existence
-        self._validate_category(product_data.category_id)
+        await self._validate_category(product_data.category_id)
 
         # Perform update
-        return self.product_repository.update(
+        return await self.product_repository.update(
             product,
             product_data.model_dump(),
         )
 
-    def delete_product(self, product_id: int) -> dict:
+    async def delete_product(self, product_id: int) -> dict:
         """
-        Logically delete product by setting is_active=False.
+        Logically delete product.
         """
+        # Perform deletion
+        product = await self.product_repository.soft_delete(product_id)
 
-        # Validate deletion result
-        product = self.product_repository.soft_delete(product_id)
         if product is None:
             raise HTTPException(
                 status_code=404,
