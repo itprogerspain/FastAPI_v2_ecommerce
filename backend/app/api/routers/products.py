@@ -90,6 +90,7 @@ async def update_product(
 
 @router.delete(
     "/{product_id}",
+    response_model=ProductSchema,
     status_code=status.HTTP_200_OK,
 )
 async def delete_product(
@@ -97,6 +98,7 @@ async def delete_product(
     service: ProductService = Depends(get_product_service),
 ):
     """
-    Logically delete a product.
+    Logically delete a product by setting is_active=False.
+    Returns the updated product with is_active=False.
     """
     return await service.delete_product(product_id)

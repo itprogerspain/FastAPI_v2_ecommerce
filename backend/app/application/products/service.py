@@ -116,11 +116,11 @@ class ProductService:
             product_data.model_dump(),
         )
 
-    async def delete_product(self, product_id: int) -> dict:
+    async def delete_product(self, product_id: int) -> ProductSchema:
         """
-        Logically delete product.
+        Logically delete product by setting is_active=False.
+        Returns the updated product object with is_active=False.
         """
-        # Perform deletion
         product = await self.product_repository.soft_delete(product_id)
 
         if product is None:
@@ -129,7 +129,5 @@ class ProductService:
                 detail="Product not found or inactive",
             )
 
-        return {
-            "status": "success",
-            "message": "Product marked as inactive",
-        }
+        # Return the product object, not a dict
+        return product
