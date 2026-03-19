@@ -3,3 +3,4 @@
 # Import all models so that SQLAlchemy knows them
 from .category import Category
 from .product import Product
+from .user import User
