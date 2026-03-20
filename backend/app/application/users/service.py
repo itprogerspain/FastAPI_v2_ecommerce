@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 
 from app.application.users.schemas import UserCreate, User as UserSchema
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password, create_access_token
 from app.infrastructure.repositories.user import UserRepository
 
 
@@ -39,3 +39,30 @@ class UserService:
         }
 
         return await self.repository.create(data)
+
+    async def login(self, email: str, password: str) -> dict:
+        """
+        Authenticate a user and return a JWT access token.
+
+        - Looks up active user by email
+        - Verifies password against stored hash
+        - Returns access token and token type on success
+        """
+        # Find active user by email
+        user = await self.repository.get_active_by_email(email)
+
+        # Check user existence and password validity in one step
+        # to avoid leaking whether the email exists
+        if not user or not verify_password(password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Create JWT with user identity data
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "id": user.id}
+        )
+
+        return {"access_token": access_token, "token_type": "bearer"}

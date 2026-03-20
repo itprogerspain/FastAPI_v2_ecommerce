@@ -14,10 +14,23 @@ class UserRepository:
 
     async def get_by_email(self, email: str) -> UserModel | None:
         """
-        Retrieve a user by email address.
+        Retrieve a user by email address regardless of active status.
         Returns None if not found.
         """
         stmt = select(UserModel).where(UserModel.email == email).limit(1)
+        result = await self.db.scalars(stmt)
+        return result.first()
+
+    async def get_active_by_email(self, email: str) -> UserModel | None:
+        """
+        Retrieve an active user by email address.
+        Returns None if not found or user is inactive.
+        """
+        stmt = (
+            select(UserModel)
+            .where(UserModel.email == email, UserModel.is_active.is_(True))
+            .limit(1)
+        )
         result = await self.db.scalars(stmt)
         return result.first()
 

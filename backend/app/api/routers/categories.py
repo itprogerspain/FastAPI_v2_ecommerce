@@ -7,11 +7,18 @@ from app.application.categories.schemas import (
 )
 from app.application.categories.service import CategoryService
 from app.api.deps import get_category_service
+from app.core.deps import get_current_admin
+from app.models.db.user import User as UserModel
 
 router = APIRouter(
     prefix="/categories",
     tags=["categories"],
 )
+
+
+# -------------------------
+# Public endpoints (no auth required)
+# -------------------------
 
 
 @router.get(
@@ -23,10 +30,14 @@ async def get_all_categories(
     service: CategoryService = Depends(get_category_service),
 ):
     """
-    Retrieve a complete list of all active product categories.
+    Retrieve a complete list of all active product categories (public).
     """
-    # Await the async service method
     return await service.get_all_categories()
+
+
+# -------------------------
+# Protected endpoints (admin only)
+# -------------------------
 
 
 @router.post(
@@ -37,11 +48,11 @@ async def get_all_categories(
 async def create_category(
     category: CategoryCreate,
     service: CategoryService = Depends(get_category_service),
+    current_user: UserModel = Depends(get_current_admin),
 ):
     """
-    Create a new category.
+    Create a new category (admin only).
     """
-    # Await the async service method
     return await service.create_category(category)
 
 
@@ -54,14 +65,11 @@ async def update_category(
     category_id: int,
     category_data: CategoryUpdate,
     service: CategoryService = Depends(get_category_service),
+    current_user: UserModel = Depends(get_current_admin),
 ):
     """
-    Update an existing category.
-
-    Only name and parent_id can be modified.
-    The category must be active.
+    Update an existing category (admin only).
     """
-    # Await the async service method
     return await service.update_category(category_id, category_data)
 
 
@@ -72,9 +80,9 @@ async def update_category(
 async def delete_category(
     category_id: int,
     service: CategoryService = Depends(get_category_service),
+    current_user: UserModel = Depends(get_current_admin),
 ):
     """
-    Logically delete a category by setting is_active=False.
+    Logically delete a category by setting is_active=False (admin only).
     """
-    # Await the async service method
     return await service.delete_category(category_id)

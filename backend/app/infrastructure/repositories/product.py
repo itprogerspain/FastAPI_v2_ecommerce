@@ -22,6 +22,7 @@ class ProductRepository:
     def _base_query():
         """
         Base query joining Product and Category with active filters.
+        Used for public-facing queries that require an active category.
         """
         return (
             select(ProductModel)
@@ -31,10 +32,24 @@ class ProductRepository:
 
     async def get_active_by_id(self, product_id: int) -> ProductModel | None:
         """
-        Retrieve an active product by ID with an active category.
+        Retrieve an active product by ID with an active category (via JOIN).
+        Used for public GET endpoints where category must also be active.
         """
         stmt = self._base_query().where(ProductModel.id == product_id).limit(1)
-        # Theoretical requirement: await scalars first, then call first()
+        result = await self.db.scalars(stmt)
+        return result.first()
+
+    async def get_active_by_id_simple(self, product_id: int) -> ProductModel | None:
+        """
+        Retrieve an active product by ID without category join.
+        Used for ownership checks and write operations (PUT, DELETE)
+        where we only need to confirm the product exists and is active.
+        """
+        stmt = (
+            select(ProductModel)
+            .where(ProductModel.id == product_id, ACTIVE_PRODUCT)
+            .limit(1)
+        )
         result = await self.db.scalars(stmt)
         return result.first()
 
@@ -95,8 +110,9 @@ class ProductRepository:
     async def soft_delete(self, product_id: int) -> ProductModel | None:
         """
         Logically delete product by setting is_active=False.
+        Uses get_active_by_id_simple to avoid JOIN issues.
         """
-        product = await self.get_active_by_id(product_id)
+        product = await self.get_active_by_id_simple(product_id)
         if product is None:
             return None
 
