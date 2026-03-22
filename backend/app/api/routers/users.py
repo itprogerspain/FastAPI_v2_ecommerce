@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 
-from app.application.users.schemas import UserCreate, User as UserSchema
+from app.application.users.schemas import (
+    UserCreate,
+    User as UserSchema,
+    RefreshTokenRequest,
+)
 from app.application.users.service import UserService
 from app.api.deps import get_user_service
 
@@ -21,7 +25,7 @@ async def create_user(
     service: UserService = Depends(get_user_service),
 ):
     """
-    Register a new user with role 'buyer' or 'seller'.
+    Register a new user with role 'buyer', 'seller' or 'admin'.
     Returns the created user without the password.
     """
     return await service.create_user(user_data)
@@ -33,15 +37,34 @@ async def login(
     service: UserService = Depends(get_user_service),
 ):
     """
-    Authenticate user and return a JWT access token.
+    Authenticate user and return both access and refresh JWT tokens.
 
     Accepts form fields:
         - username : user email address
         - password : plain-text password
 
     Returns:
-        - access_token : signed JWT
-        - token_type   : 'bearer'
+        - access_token  : short-lived JWT (30 minutes)
+        - refresh_token : long-lived JWT (7 days)
+        - token_type    : 'bearer'
     """
     # OAuth2PasswordRequestForm uses 'username' field for email by convention
     return await service.login(form_data.username, form_data.password)
+
+
+@router.post("/refresh-token")
+async def refresh_token(
+    body: RefreshTokenRequest,
+    service: UserService = Depends(get_user_service),
+):
+    """
+    Issue a new refresh token using a valid existing refresh token.
+
+    Use this endpoint when the access token has expired.
+    The old refresh token is validated and replaced with a new one.
+
+    Returns:
+        - refresh_token : new long-lived JWT (7 days)
+        - token_type    : 'bearer'
+    """
+    return await service.refresh_token(body.refresh_token)

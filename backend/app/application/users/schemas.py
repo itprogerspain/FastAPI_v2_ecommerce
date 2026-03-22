@@ -33,3 +33,12 @@ class User(BaseModel):
     role: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RefreshTokenRequest(BaseModel):
+    """
+    Schema for refresh token endpoint.
+    Client sends the old refresh token to receive a new one.
+    """
+
+    refresh_token: str

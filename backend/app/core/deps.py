@@ -20,6 +20,7 @@ async def get_current_user(
         - Token is missing or malformed
         - Token has expired
         - 'sub' claim (email) is missing in payload
+        - token_type is not 'access' (prevents refresh token misuse)
         - User not found in database or is inactive
     """
     credentials_exception = HTTPException(
@@ -30,9 +31,14 @@ async def get_current_user(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        email: str | None = payload.get("sub")
+        token_type: str | None = payload.get("token_type")
+
+        # Reject if email missing or token is not an access token
+        # This prevents refresh tokens from being used on protected endpoints
+        if email is None or token_type != "access":
             raise credentials_exception
+
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -42,7 +48,6 @@ async def get_current_user(
     except jwt.PyJWTError:
         raise credentials_exception
 
-    # Use repository to stay consistent with project architecture
     repository = UserRepository(db)
     user = await repository.get_active_by_email(email)
 

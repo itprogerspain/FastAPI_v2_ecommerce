@@ -11,3 +11,6 @@ ALGORITHM = "HS256"
 
 # Access token lifetime in minutes
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Refresh token lifetime in days
+REFRESH_TOKEN_EXPIRE_DAYS = 7
