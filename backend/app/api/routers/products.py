@@ -5,7 +5,9 @@ from app.application.products.schemas import (
     ProductCreate,
 )
 from app.application.products.service import ProductService
-from app.api.deps import get_product_service
+from app.application.reviews.schemas import Review as ReviewSchema
+from app.application.reviews.service import ReviewService
+from app.api.deps import get_product_service, get_review_service
 from app.core.deps import get_current_seller
 from app.models.db.user import User as UserModel
 
@@ -62,6 +64,22 @@ async def get_product(
     Retrieve a single active product (public).
     """
     return await service.get_product(product_id)
+
+
+@router.get(
+    "/{product_id}/reviews/",
+    response_model=list[ReviewSchema],
+    status_code=status.HTTP_200_OK,
+)
+async def get_product_reviews(
+    product_id: int,
+    service: ReviewService = Depends(get_review_service),
+):
+    """
+    Retrieve all active reviews for a specific product (public).
+    Returns 404 if the product does not exist or is inactive.
+    """
+    return await service.get_reviews_by_product(product_id)
 
 
 # -------------------------

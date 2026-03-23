@@ -8,6 +8,8 @@ from app.infrastructure.repositories.product import ProductRepository
 from app.application.products.service import ProductService
 from app.infrastructure.repositories.user import UserRepository
 from app.application.users.service import UserService
+from app.infrastructure.repositories.review import ReviewRepository
+from app.application.reviews.service import ReviewService
 
 
 async def get_category_service(
@@ -43,3 +45,18 @@ async def get_user_service(
     """
     repository = UserRepository(db)
     return UserService(repository)
+
+
+async def get_review_service(
+    db: AsyncSession = Depends(get_async_db),
+) -> ReviewService:
+    """
+    Dependency that provides ReviewService instance using an async session.
+    """
+    review_repository = ReviewRepository(db)
+    product_repository = ProductRepository(db)
+
+    return ReviewService(
+        review_repository,
+        product_repository,
+    )

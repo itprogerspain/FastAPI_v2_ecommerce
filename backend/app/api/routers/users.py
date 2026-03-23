@@ -48,7 +48,6 @@ async def login(
         - refresh_token : long-lived JWT (7 days)
         - token_type    : 'bearer'
     """
-    # OAuth2PasswordRequestForm uses 'username' field for email by convention
     return await service.login(form_data.username, form_data.password)
 
 
@@ -60,11 +59,26 @@ async def refresh_token(
     """
     Issue a new refresh token using a valid existing refresh token.
 
-    Use this endpoint when the access token has expired.
-    The old refresh token is validated and replaced with a new one.
-
     Returns:
         - refresh_token : new long-lived JWT (7 days)
         - token_type    : 'bearer'
     """
     return await service.refresh_token(body.refresh_token)
+
+
+@router.post("/access-token")
+async def get_new_access_token(
+    body: RefreshTokenRequest,
+    service: UserService = Depends(get_user_service),
+):
+    """
+    Issue a new access token using a valid refresh token.
+
+    The refresh token is validated but NOT rotated — it stays unchanged.
+    Use this endpoint when the access token has expired.
+
+    Returns:
+        - access_token : new short-lived JWT (30 minutes)
+        - token_type   : 'bearer'
+    """
+    return await service.get_new_access_token(body.refresh_token)

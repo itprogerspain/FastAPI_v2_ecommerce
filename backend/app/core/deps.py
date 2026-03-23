@@ -87,3 +87,19 @@ async def get_current_admin(
             detail="Only admins can perform this action",
         )
     return current_user
+
+
+async def get_current_buyer(
+    current_user: UserModel = Depends(get_current_user),
+) -> UserModel:
+    """
+    Dependency that ensures the current user has the 'buyer' role.
+
+    Raises 403 Forbidden if the user is not a buyer.
+    """
+    if current_user.role != "buyer":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only buyers can leave reviews",
+        )
+    return current_user

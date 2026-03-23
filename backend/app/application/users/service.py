@@ -81,6 +81,12 @@ class UserService:
         - Verifies that the user still exists and is active
         - Returns a new refresh token
         """
+        # TODO: In production, implement refresh token rotation:
+        #  - Store refresh tokens in DB (table: refresh_tokens)
+        #  - Invalidate old token on use (set is_used=True)
+        #  - If already-used token is received — revoke ALL user tokens (possible leak)
+        #  - Consider using Redis with TTL for automatic expiration
+
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate refresh token",
@@ -97,13 +103,10 @@ class UserService:
                 raise credentials_exception
 
         except jwt.ExpiredSignatureError:
-            # Refresh token has expired — user must log in again
             raise credentials_exception
         except jwt.PyJWTError:
-            # Invalid signature or malformed token
             raise credentials_exception
 
-        # Verify user still exists and is active
         user = await self.repository.get_active_by_email(email)
         if user is None:
             raise credentials_exception
@@ -114,5 +117,48 @@ class UserService:
 
         return {
             "refresh_token": new_refresh_token,
+            "token_type": "bearer",
+        }
+
+    async def get_new_access_token(self, refresh_token: str) -> dict:
+        """
+        Issue a new access token using a valid refresh token.
+
+        - Decodes and verifies the refresh token signature and expiration
+        - Checks that token_type is 'refresh' to prevent access token misuse
+        - Verifies that the user still exists and is active
+        - Returns a new access token (refresh token stays unchanged)
+        """
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate refresh token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+        try:
+            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+            email: str | None = payload.get("sub")
+            token_type: str | None = payload.get("token_type")
+
+            # Only refresh tokens are accepted here
+            if email is None or token_type != "refresh":
+                raise credentials_exception
+
+        except jwt.ExpiredSignatureError:
+            raise credentials_exception
+        except jwt.PyJWTError:
+            raise credentials_exception
+
+        user = await self.repository.get_active_by_email(email)
+        if user is None:
+            raise credentials_exception
+
+        # Issue new access token only — refresh token remains unchanged
+        new_access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "id": user.id}
+        )
+
+        return {
+            "access_token": new_access_token,
             "token_type": "bearer",
         }
