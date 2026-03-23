@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.application.products.schemas import (
     Product as ProductSchema,
     ProductCreate,
+    ProductList,
 )
 from app.application.products.service import ProductService
 from app.application.reviews.schemas import Review as ReviewSchema
@@ -24,16 +25,42 @@ router = APIRouter(
 
 @router.get(
     "/",
-    response_model=list[ProductSchema],
+    response_model=ProductList,
     status_code=status.HTTP_200_OK,
 )
 async def get_all_products(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    category_id: int | None = Query(None, description="Filter by category ID"),
+    min_price: float | None = Query(None, ge=0, description="Minimum product price"),
+    max_price: float | None = Query(None, ge=0, description="Maximum product price"),
+    in_stock: bool | None = Query(
+        None, description="true = in stock only, false = out of stock only"
+    ),
+    seller_id: int | None = Query(None, description="Filter by seller ID"),
     service: ProductService = Depends(get_product_service),
 ):
     """
-    Retrieve all active products (public).
+    Retrieve all active products with pagination and optional filters (public).
+
+    Query parameters:
+        - page        : page number, starts from 1 (default: 1)
+        - page_size   : items per page, max 100 (default: 20)
+        - category_id : filter by category
+        - min_price   : minimum price (inclusive)
+        - max_price   : maximum price (inclusive)
+        - in_stock    : true = stock > 0, false = stock == 0
+        - seller_id   : filter by seller
     """
-    return await service.get_all_products()
+    return await service.get_all_products(
+        page=page,
+        page_size=page_size,
+        category_id=category_id,
+        min_price=min_price,
+        max_price=max_price,
+        in_stock=in_stock,
+        seller_id=seller_id,
+    )
 
 
 @router.get(

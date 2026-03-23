@@ -1,4 +1,6 @@
-from sqlalchemy import select
+from decimal import Decimal
+
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db.product import Product as ProductModel
@@ -53,13 +55,62 @@ class ProductRepository:
         result = await self.db.scalars(stmt)
         return result.first()
 
-    async def get_all_active(self) -> list[ProductModel]:
+    async def get_all_active_paginated(
+        self,
+        page: int,
+        page_size: int,
+        category_id: int | None = None,
+        min_price: Decimal | None = None,
+        max_price: Decimal | None = None,
+        in_stock: bool | None = None,
+        seller_id: int | None = None,
+    ) -> tuple[list[ProductModel], int]:
         """
-        Retrieve all active products with active categories and stock > 0.
+        Retrieve active products with pagination and optional filters.
+
+        Filters (all optional):
+            - category_id : filter by category
+            - min_price   : minimum price (inclusive)
+            - max_price   : maximum price (inclusive)
+            - in_stock    : True = stock > 0, False = stock == 0
+            - seller_id   : filter by seller
+
+        Returns a tuple of:
+            - items : list of ProductModel for the current page
+            - total : total count matching the filters (for pagination metadata)
         """
-        stmt = self._base_query().where(IN_STOCK).order_by(ProductModel.id)
-        result = await self.db.scalars(stmt)
-        return list(result.all())
+        # Build dynamic filter list — all conditions combined with AND
+        filters = [ACTIVE_PRODUCT]
+
+        if category_id is not None:
+            filters.append(ProductModel.category_id == category_id)
+        if min_price is not None:
+            filters.append(ProductModel.price >= min_price)
+        if max_price is not None:
+            filters.append(ProductModel.price <= max_price)
+        if in_stock is not None:
+            filters.append(
+                ProductModel.stock > 0 if in_stock else ProductModel.stock == 0
+            )
+        if seller_id is not None:
+            filters.append(ProductModel.seller_id == seller_id)
+
+        # Count total matching products (same filters, no pagination)
+        total_stmt = select(func.count()).select_from(ProductModel).where(*filters)
+        total = await self.db.scalar(total_stmt) or 0
+
+        # Fetch paginated products with the same filters
+        products_stmt = (
+            select(ProductModel)
+            .where(*filters)
+            .order_by(ProductModel.id)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        result = await self.db.scalars(products_stmt)
+        items = list(result.all())
+
+        return items, total
 
     async def get_active_by_category(self, category_id: int) -> list[ProductModel]:
         """

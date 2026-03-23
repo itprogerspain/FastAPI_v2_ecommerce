@@ -38,5 +38,19 @@ class Product(ProductCreate):
 
     id: int = Field(..., description="Unique product identifier")
     is_active: bool = Field(..., description="Indicates whether the product is active")
+    rating: float = Field(..., description="Average rating based on reviews")
 
     model_config = ConfigDict(from_attributes=True, json_encoders={Decimal: float})
+
+
+class ProductList(BaseModel):
+    """
+    Paginated response schema for product listings.
+    """
+
+    items: list[Product] = Field(description="Products for the current page")
+    total: int = Field(ge=0, description="Total number of active products")
+    page: int = Field(ge=1, description="Current page number")
+    page_size: int = Field(ge=1, description="Number of items per page")
+
+    model_config = ConfigDict(from_attributes=True)

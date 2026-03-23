@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from fastapi import HTTPException, status
 
 from app.application.products.schemas import (
     Product as ProductSchema,
     ProductCreate,
+    ProductList,
 )
 from app.infrastructure.repositories.product import ProductRepository
 from app.infrastructure.repositories.category import CategoryRepository
@@ -67,27 +70,45 @@ class ProductService:
     # Public service methods
     # -------------------------
 
-    async def create_product(
+    async def get_all_products(
         self,
-        product_data: ProductCreate,
-        seller_id: int,
-    ) -> ProductSchema:
+        page: int,
+        page_size: int,
+        category_id: int | None = None,
+        min_price: float | None = None,
+        max_price: float | None = None,
+        in_stock: bool | None = None,
+        seller_id: int | None = None,
+    ) -> ProductList:
         """
-        Create a new product bound to the given seller.
-        """
-        await self._validate_category(product_data.category_id)
+        Retrieve active products with pagination and optional filters.
 
-        data = product_data.model_dump()
-        data["is_active"] = True
-        data["seller_id"] = seller_id  # Bind product to the seller
-
-        return await self.product_repository.create(data)
-
-    async def get_all_products(self) -> list[ProductSchema]:
+        Validates that min_price <= max_price before querying.
+        Delegates filter logic to the repository layer.
         """
-        Retrieve all active products (public).
-        """
-        return await self.product_repository.get_all_active()
+        # Validate price range logic
+        if min_price is not None and max_price is not None and min_price > max_price:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="min_price cannot be greater than max_price",
+            )
+
+        items, total = await self.product_repository.get_all_active_paginated(
+            page=page,
+            page_size=page_size,
+            category_id=category_id,
+            min_price=Decimal(str(min_price)) if min_price is not None else None,
+            max_price=Decimal(str(max_price)) if max_price is not None else None,
+            in_stock=in_stock,
+            seller_id=seller_id,
+        )
+
+        return ProductList(
+            items=items,
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
 
     async def get_products_by_category(self, category_id: int) -> list[ProductSchema]:
         """
@@ -108,6 +129,22 @@ class ProductService:
                 detail="Product not found or inactive",
             )
         return product
+
+    async def create_product(
+        self,
+        product_data: ProductCreate,
+        seller_id: int,
+    ) -> ProductSchema:
+        """
+        Create a new product bound to the given seller.
+        """
+        await self._validate_category(product_data.category_id)
+
+        data = product_data.model_dump()
+        data["is_active"] = True
+        data["seller_id"] = seller_id
+
+        return await self.product_repository.create(data)
 
     async def update_product(
         self,
