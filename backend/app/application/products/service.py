@@ -79,12 +79,13 @@ class ProductService:
         max_price: float | None = None,
         in_stock: bool | None = None,
         seller_id: int | None = None,
+        search: str | None = None,
     ) -> ProductList:
         """
-        Retrieve active products with pagination and optional filters.
+        Retrieve active products with pagination, optional filters and text search.
 
         Validates that min_price <= max_price before querying.
-        Delegates filter logic to the repository layer.
+        Delegates filter and search logic to the repository layer.
         """
         # Validate price range logic
         if min_price is not None and max_price is not None and min_price > max_price:
@@ -101,6 +102,7 @@ class ProductService:
             max_price=Decimal(str(max_price)) if max_price is not None else None,
             in_stock=in_stock,
             seller_id=seller_id,
+            search=search,
         )
 
         return ProductList(

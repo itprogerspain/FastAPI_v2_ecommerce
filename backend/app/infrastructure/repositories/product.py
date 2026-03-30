@@ -64,9 +64,10 @@ class ProductRepository:
         max_price: Decimal | None = None,
         in_stock: bool | None = None,
         seller_id: int | None = None,
+        search: str | None = None,
     ) -> tuple[list[ProductModel], int]:
         """
-        Retrieve active products with pagination and optional filters.
+        Retrieve active products with pagination, optional filters and text search.
 
         Filters (all optional):
             - category_id : filter by category
@@ -74,6 +75,7 @@ class ProductRepository:
             - max_price   : maximum price (inclusive)
             - in_stock    : True = stock > 0, False = stock == 0
             - seller_id   : filter by seller
+            - search      : case-insensitive substring search in product name
 
         Returns a tuple of:
             - items : list of ProductModel for the current page
@@ -84,6 +86,11 @@ class ProductRepository:
 
         if category_id is not None:
             filters.append(ProductModel.category_id == category_id)
+        if search is not None:
+            search_value = search.strip()
+            if search_value:
+                # PostgreSQL native case-insensitive search via ILIKE
+                filters.append(ProductModel.name.ilike(f"%{search_value}%"))
         if min_price is not None:
             filters.append(ProductModel.price >= min_price)
         if max_price is not None:

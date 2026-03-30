@@ -32,6 +32,9 @@ async def get_all_products(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     category_id: int | None = Query(None, description="Filter by category ID"),
+    search: str | None = Query(
+        None, min_length=1, description="Search by product name"
+    ),
     min_price: float | None = Query(None, ge=0, description="Minimum product price"),
     max_price: float | None = Query(None, ge=0, description="Maximum product price"),
     in_stock: bool | None = Query(
@@ -41,12 +44,13 @@ async def get_all_products(
     service: ProductService = Depends(get_product_service),
 ):
     """
-    Retrieve all active products with pagination and optional filters (public).
+    Retrieve all active products with pagination, filters and text search (public).
 
     Query parameters:
         - page        : page number, starts from 1 (default: 1)
         - page_size   : items per page, max 100 (default: 20)
         - category_id : filter by category
+        - search      : case-insensitive substring search in product name
         - min_price   : minimum price (inclusive)
         - max_price   : maximum price (inclusive)
         - in_stock    : true = stock > 0, false = stock == 0
@@ -60,6 +64,7 @@ async def get_all_products(
         max_price=max_price,
         in_stock=in_stock,
         seller_id=seller_id,
+        search=search,
     )
 
 
