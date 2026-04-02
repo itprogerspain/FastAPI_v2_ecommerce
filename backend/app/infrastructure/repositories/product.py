@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db.product import Product as ProductModel
@@ -67,7 +67,16 @@ class ProductRepository:
         search: str | None = None,
     ) -> tuple[list[ProductModel], int]:
         """
-        Retrieve active products with pagination, optional filters and text search.
+        Retrieve active products with pagination, optional filters and full-text search.
+
+        When search is provided:
+            - Uses PostgreSQL FTS with websearch_to_tsquery (web-like syntax)
+            - Matches against tsv computed column (name weight A, description weight B)
+            - Results are ranked by ts_rank_cd (coverage density algorithm)
+            - Sorting: relevance DESC, then id ASC
+
+        When search is not provided:
+            - Simple filters with ORDER BY id
 
         Filters (all optional):
             - category_id : filter by category
@@ -75,22 +84,17 @@ class ProductRepository:
             - max_price   : maximum price (inclusive)
             - in_stock    : True = stock > 0, False = stock == 0
             - seller_id   : filter by seller
-            - search      : case-insensitive substring search in product name
+            - search      : full-text search query (web syntax supported)
 
         Returns a tuple of:
             - items : list of ProductModel for the current page
-            - total : total count matching the filters (for pagination metadata)
+            - total : total count matching all filters
         """
         # Build dynamic filter list — all conditions combined with AND
         filters = [ACTIVE_PRODUCT]
 
         if category_id is not None:
             filters.append(ProductModel.category_id == category_id)
-        if search is not None:
-            search_value = search.strip()
-            if search_value:
-                # PostgreSQL native case-insensitive search via ILIKE
-                filters.append(ProductModel.name.ilike(f"%{search_value}%"))
         if min_price is not None:
             filters.append(ProductModel.price >= min_price)
         if max_price is not None:
@@ -102,20 +106,48 @@ class ProductRepository:
         if seller_id is not None:
             filters.append(ProductModel.seller_id == seller_id)
 
+        # Full-text search via PostgreSQL FTS
+        rank_col = None
+        if search:
+            search_value = search.strip()
+            if search_value:
+                # websearch_to_tsquery supports web-like syntax: quotes, minus, AND/OR
+                ts_query = func.websearch_to_tsquery("english", search_value)
+
+                # @@ operator checks if tsv matches the ts_query
+                filters.append(ProductModel.tsv.op("@@")(ts_query))
+
+                # ts_rank_cd: coverage density ranking — stable with long texts
+                # Words with weight 'A' (name) score higher than 'B' (description)
+                rank_col = func.ts_rank_cd(ProductModel.tsv, ts_query).label("rank")
+
         # Count total matching products (same filters, no pagination)
         total_stmt = select(func.count()).select_from(ProductModel).where(*filters)
         total = await self.db.scalar(total_stmt) or 0
 
-        # Fetch paginated products with the same filters
-        products_stmt = (
-            select(ProductModel)
-            .where(*filters)
-            .order_by(ProductModel.id)
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        )
-        result = await self.db.scalars(products_stmt)
-        items = list(result.all())
+        # Fetch paginated products
+        if rank_col is not None:
+            # When searching: sort by relevance DESC, then id ASC for stable order
+            products_stmt = (
+                select(ProductModel, rank_col)
+                .where(*filters)
+                .order_by(desc(rank_col), ProductModel.id)
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+            result = await self.db.execute(products_stmt)
+            items = [row[0] for row in result.all()]
+        else:
+            # Without search: simple sort by id
+            products_stmt = (
+                select(ProductModel)
+                .where(*filters)
+                .order_by(ProductModel.id)
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+            )
+            result = await self.db.scalars(products_stmt)
+            items = list(result.all())
 
         return items, total
 
