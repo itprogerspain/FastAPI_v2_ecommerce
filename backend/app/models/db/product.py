@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.models.db.category import Category
     from app.models.db.user import User
     from app.models.db.review import Review
+    from app.models.db.cart import CartItem
 
 
 class Product(Base):
@@ -52,6 +53,9 @@ class Product(Base):
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     seller: Mapped["User"] = relationship("User", back_populates="products")
     reviews: Mapped[list["Review"]] = relationship("Review", back_populates="product")
+    cart_items: Mapped[list["CartItem"]] = relationship(
+        "CartItem", back_populates="product", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         # GIN index for fast full-text search on tsv field

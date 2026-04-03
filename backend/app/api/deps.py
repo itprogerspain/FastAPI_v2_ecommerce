@@ -10,6 +10,8 @@ from app.infrastructure.repositories.user import UserRepository
 from app.application.users.service import UserService
 from app.infrastructure.repositories.review import ReviewRepository
 from app.application.reviews.service import ReviewService
+from app.infrastructure.repositories.cart import CartRepository
+from app.application.cart.service import CartService
 
 
 async def get_category_service(
@@ -60,3 +62,13 @@ async def get_review_service(
         review_repository,
         product_repository,
     )
+
+
+async def get_cart_service(
+    db: AsyncSession = Depends(get_async_db),
+) -> CartService:
+    """
+    Dependency that provides CartService instance using an async session.
+    """
+    repository = CartRepository(db)
+    return CartService(repository)

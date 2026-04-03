@@ -121,6 +121,13 @@ class ProductRepository:
                 # Words with weight 'A' (name) score higher than 'B' (description)
                 rank_col = func.ts_rank_cd(ProductModel.tsv, ts_query).label("rank")
 
+        # TODO: Add trigram search (pg_trgm) for typo-tolerance
+        #  - Enable pg_trgm extension via migration: op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+        #  - Add GIN index on name and description columns
+        #  - Use similarity() or % operator for fuzzy matching
+        #  - Combine with FTS ranking (ts_rank_cd) for best relevance score
+        #  - Consider threshold: similarity(name, search_value) > 0.3
+
         # Count total matching products (same filters, no pagination)
         total_stmt = select(func.count()).select_from(ProductModel).where(*filters)
         total = await self.db.scalar(total_stmt) or 0
