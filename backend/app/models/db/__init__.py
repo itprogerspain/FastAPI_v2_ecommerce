@@ -6,3 +6,4 @@ from .product import Product
 from .user import User
 from .review import Review
 from .cart import CartItem
+from .order import Order, OrderItem
