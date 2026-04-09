@@ -1,37 +1,44 @@
-from fastapi import APIRouter
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from fastapi import APIRouter, Depends, status, Query
+from app.api.deps import get_order_service, get_current_user
+from app.application.orders.service import OrderService
+from app.application.orders.schemas import Order as OrderSchema, OrderList
 
-from app.models.db.order import Order as OrderModel, OrderItem as OrderItemModel
+router = APIRouter(prefix="/orders", tags=["orders"])
 
-router = APIRouter(
-    prefix="/orders",
-    tags=["orders"],
+
+@router.post(
+    "/checkout",
+    response_model=OrderSchema,
+    status_code=status.HTTP_201_CREATED,
 )
+async def checkout_order(
+    current_user=Depends(get_current_user),
+    order_service: OrderService = Depends(get_order_service),
+):
+    return await order_service.checkout(current_user.id)
 
 
-async def _load_order_with_items(db: AsyncSession, order_id: int) -> OrderModel | None:
+@router.get("/", response_model=OrderList)
+async def list_orders(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    current_user=Depends(get_current_user),
+    order_service: OrderService = Depends(get_order_service),
+):
     """
-    Load a single order with all its items and products eagerly loaded.
-
-    Uses nested selectinload to avoid N+1 queries:
-        1st query : fetch the order
-        2nd query : fetch all OrderItems for that order (WHERE id IN (...))
-        3rd query : fetch all Products for those OrderItems (WHERE id IN (...))
-
-    This gives us the full Order -> OrderItem -> Product structure
-    in memory with just 2-3 efficient queries.
-
-    selectinload is preferred over joinedload here because:
-        - No duplicate rows from JOINs on collections
-        - Better performance on large result sets
+    Returns the current user's orders with simple pagination.
     """
-    result = await db.scalars(
-        select(OrderModel)
-        .options(
-            selectinload(OrderModel.items).selectinload(OrderItemModel.product),
-        )
-        .where(OrderModel.id == order_id)
-    )
-    return result.first()
+    return await order_service.list_orders(current_user.id, page, page_size)
+
+
+@router.get("/{order_id}", response_model=OrderSchema)
+async def get_order(
+    order_id: int,
+    current_user=Depends(get_current_user),
+    order_service: OrderService = Depends(get_order_service),
+):
+    """
+    Returns order with items and products.
+    Access restricted to the owner.
+    """
+    return await order_service.get_order(current_user.id, order_id)

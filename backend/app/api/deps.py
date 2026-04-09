@@ -1,7 +1,12 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+import jwt
 
 from app.infrastructure.db import get_async_db
+from app.core.config import SECRET_KEY, ALGORITHM
+from fastapi.security import OAuth2PasswordBearer
+
+
 from app.infrastructure.repositories.category import CategoryRepository
 from app.application.categories.service import CategoryService
 from app.infrastructure.repositories.product import ProductRepository
@@ -12,6 +17,10 @@ from app.infrastructure.repositories.review import ReviewRepository
 from app.application.reviews.service import ReviewService
 from app.infrastructure.repositories.cart import CartRepository
 from app.application.cart.service import CartService
+from app.infrastructure.repositories.order import OrderRepository
+from app.application.orders.service import OrderService
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token")
 
 
 async def get_category_service(
@@ -72,3 +81,54 @@ async def get_cart_service(
     """
     repository = CartRepository(db)
     return CartService(repository)
+
+
+async def get_order_service(
+    db: AsyncSession = Depends(get_async_db),
+) -> OrderService:
+    order_repo = OrderRepository(db)
+    product_repo = ProductRepository(db)
+    cart_repo = CartRepository(db)
+
+    return OrderService(
+        order_repository=order_repo,
+        product_repository=product_repo,
+        cart_repository=cart_repo,
+        db_session=db,
+    )
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Extract current user from JWT access token.
+    Validates signature, expiration and user existence.
+    """
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: int | None = payload.get("id")
+
+        if user_id is None:
+            raise credentials_exception
+
+    except jwt.ExpiredSignatureError:
+        raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+
+    user_repo = UserRepository(db)
+    user = await user_repo.get_active_by_email(payload.get("sub"))
+
+    if user is None:
+        raise credentials_exception
+
+    return user
