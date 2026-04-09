@@ -7,6 +7,12 @@ drivers/
 logs/
 *.log
 
+# User uploaded files
+backend/media/
+
+# Claude Code instructions
+CLAUDE.md
+
 # C extensions
 *.so
 #*.json
