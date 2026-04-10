@@ -204,9 +204,18 @@ class ProductRepository:
         await self.db.refresh(product)
         return product
 
+    async def update_image_url(self, product: ProductModel, image_url: str) -> ProductModel:
+        """
+        Update only the image_url field of an existing product.
+        """
+        product.image_url = image_url
+        await self.db.commit()
+        await self.db.refresh(product)
+        return product
+
     async def soft_delete(self, product_id: int) -> ProductModel | None:
         """
-        Logically delete product by setting is_active=False.
+        Logically delete product by setting is_active=False and clearing image_url.
         Uses get_active_by_id_simple to avoid JOIN issues.
         """
         product = await self.get_active_by_id_simple(product_id)
@@ -214,6 +223,7 @@ class ProductRepository:
             return None
 
         product.is_active = False
+        product.image_url = None
         await self.db.commit()
         await self.db.refresh(product)
         return product

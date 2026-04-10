@@ -163,16 +163,34 @@ class ProductService:
 
         return await self.product_repository.update(product, product_data.model_dump())
 
+    async def update_product_image(
+        self,
+        product_id: int,
+        image_url: str,
+        seller_id: int,
+    ) -> tuple[ProductSchema, str | None]:
+        """
+        Update product image URL. Only the owning seller can update it.
+        Returns a tuple of (updated product, old image URL for file deletion).
+        """
+        product = await self._validate_product(product_id)
+        self._validate_ownership(product, seller_id)
+        old_image_url = product.image_url
+        updated = await self.product_repository.update_image_url(product, image_url)
+        return updated, old_image_url
+
     async def delete_product(
         self,
         product_id: int,
         seller_id: int,
-    ) -> ProductSchema:
+    ) -> tuple[ProductSchema, str | None]:
         """
         Logically delete product. Only the owning seller can delete it.
+        Returns a tuple of (deleted product, old image URL for file deletion).
         """
         product = await self._validate_product(product_id)
         self._validate_ownership(product, seller_id)
+        old_image_url = product.image_url
 
         deleted = await self.product_repository.soft_delete(product_id)
-        return deleted
+        return deleted, old_image_url

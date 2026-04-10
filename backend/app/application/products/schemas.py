@@ -21,7 +21,6 @@ class ProductCreate(BaseModel):
         decimal_places=2,
         description="Product price (must be greater than 0)",
     )
-    image_url: str | None = Field(None, max_length=200, description="Product image URL")
     stock: int = Field(..., ge=0, description="Number of items in stock (0 or more)")
     category_id: int = Field(
         ..., description="ID of the category this product belongs to"
@@ -39,6 +38,7 @@ class Product(ProductCreate):
     id: int = Field(..., description="Unique product identifier")
     is_active: bool = Field(..., description="Indicates whether the product is active")
     rating: float = Field(..., description="Average rating based on reviews")
+    image_url: str | None = Field(None, description="Product image URL")
 
     model_config = ConfigDict(from_attributes=True, json_encoders={Decimal: float})
 

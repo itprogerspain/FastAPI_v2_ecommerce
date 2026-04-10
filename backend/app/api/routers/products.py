@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, Query, status
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 
 from app.application.products.schemas import (
     Product as ProductSchema,
@@ -11,6 +14,50 @@ from app.application.reviews.service import ReviewService
 from app.api.deps import get_product_service, get_review_service
 from app.core.deps import get_current_seller
 from app.models.db.user import User as UserModel
+
+# TODO: For production with large file volumes, replace local media storage with
+#       S3-compatible storage (e.g. AWS S3, MinIO) or a CDN.
+#       Local storage is acceptable for learning/pet projects only.
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+MEDIA_ROOT = BASE_DIR / "media" / "products"
+MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_IMAGE_SIZE = 2 * 1024 * 1024  # 2 097 152 bites
+
+
+async def save_product_image(file: UploadFile) -> str:
+    """
+    Saves the product image and returns a relative URL.
+    """
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Only JPG, PNG or WebP images are allowed"
+        )
+
+    content = await file.read()
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Image is too large")
+
+    extension = Path(file.filename or "").suffix.lower() or ".jpg"
+    file_name = f"{uuid.uuid4()}{extension}"
+    file_path = MEDIA_ROOT / file_name
+    file_path.write_bytes(content)
+
+    return f"/media/products/{file_name}"
+
+
+def remove_product_image(url: str | None) -> None:
+    """
+    Deletes the image file if it exists.
+    """
+    if not url:
+        return
+    relative_path = url.lstrip("/")
+    file_path = BASE_DIR / relative_path
+    if file_path.exists():
+        file_path.unlink()
+
 
 router = APIRouter(
     prefix="/products",
@@ -120,6 +167,37 @@ async def get_product_reviews(
 
 
 @router.post(
+    "/{product_id}/image",
+    response_model=ProductSchema,
+    status_code=status.HTTP_200_OK,
+)
+async def upload_product_image(
+    product_id: int,
+    file: UploadFile,
+    service: ProductService = Depends(get_product_service),
+    current_user: UserModel = Depends(get_current_seller),
+):
+    """
+    Upload or replace the product image (seller only).
+    Saves the new file first, then updates the DB.
+    If the DB update fails, the newly saved file is cleaned up automatically.
+    The old image file is deleted from disk after a successful DB update.
+    """
+    new_image_url = await save_product_image(file)
+    try:
+        product, old_image_url = await service.update_product_image(
+            product_id, new_image_url, seller_id=current_user.id
+        )
+    except HTTPException:
+        # DB update failed — remove the newly saved file to avoid orphaned files
+        remove_product_image(new_image_url)
+        raise
+    # DB update succeeded — safe to delete the old image file
+    remove_product_image(old_image_url)
+    return product
+
+
+@router.post(
     "/",
     response_model=ProductSchema,
     status_code=status.HTTP_201_CREATED,
@@ -166,5 +244,8 @@ async def delete_product(
 ):
     """
     Logically delete a product. Only the owning seller can delete it (seller only).
+    Removes the product image file from disk after successful DB soft delete.
     """
-    return await service.delete_product(product_id, seller_id=current_user.id)
+    product, old_image_url = await service.delete_product(product_id, seller_id=current_user.id)
+    remove_product_image(old_image_url)
+    return product
