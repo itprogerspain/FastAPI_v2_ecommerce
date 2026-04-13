@@ -16,6 +16,11 @@ router = APIRouter(
     tags=["cart"],
 )
 
+# TODO: Add anonymous cart support via SessionMiddleware (request.session["cart"]).
+#       Flow: anonymous user adds items → items stored in session cookie.
+#       On login/registration → merge session cart into the user's DB cart,
+#       then clear the session key. All current endpoints require auth (get_current_user).
+
 
 @router.get(
     "/",
