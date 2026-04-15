@@ -5,3 +5,8 @@
 # - worker     : Celery worker (processes background tasks)
 # - beat       : Celery beat scheduler (triggers periodic tasks)
 # - nginx      : Reverse proxy
+# - flower     : Celery monitoring UI (http://localhost:5555)
+#                TODO: add Flower service for real-time Celery monitoring
+#                      use official image: mher/flower
+#                      command: celery -A app.core.celery.celery_app flower
+#                      depends_on: redis, worker

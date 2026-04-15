@@ -9,6 +9,7 @@ from .routers import (
     profiles,
     reviews,
     pages,
+    ws,
 )
 
 # Main router for API version 1
@@ -24,3 +25,4 @@ api_v1_router.include_router(orders.router)
 # api_v1_router.include_router(profiles.router)
 # api_v1_router.include_router(pages.router)
 # api_v1_router.include_router(auth.router)
+api_v1_router.include_router(ws.router)
