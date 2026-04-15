@@ -1,0 +1,7 @@
+# docker-compose.yml will include the following services:
+# - backend    : FastAPI application
+# - postgres   : PostgreSQL database
+# - redis      : Redis broker for Celery
+# - worker     : Celery worker (processes background tasks)
+# - beat       : Celery beat scheduler (triggers periodic tasks)
+# - nginx      : Reverse proxy

@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from app.application.reviews.schemas import ReviewCreate, Review as ReviewSchema
 from app.infrastructure.repositories.review import ReviewRepository
 from app.infrastructure.repositories.product import ProductRepository
+from app.tasks.products import recalculate_product_rating
 
 
 class ReviewService:
@@ -65,8 +66,10 @@ class ReviewService:
 
         review = await self.review_repository.create(data)
 
-        # Recalculate product rating after new review is added
-        await self.review_repository.update_product_rating(review_data.product_id)
+        # Recalculate product rating asynchronously after new review is added.
+        # .delay() sends the task to Redis — worker picks it up in the background.
+        # The API response is returned immediately without waiting for recalculation.
+        recalculate_product_rating.delay(review_data.product_id)
 
         return review
 
@@ -97,8 +100,8 @@ class ReviewService:
         product_id = review.product_id
         await self.review_repository.soft_delete(review)
 
-        # Recalculate product rating after review is removed
-        await self.review_repository.update_product_rating(product_id)
+        # Recalculate product rating asynchronously after review is removed
+        recalculate_product_rating.delay(product_id)
 
         return {"message": "Review deleted"}
 

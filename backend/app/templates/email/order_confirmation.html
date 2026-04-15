@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; }
+        h1 { color: #4CAF50; }
+        .order-info { background: #f9f9f9; padding: 16px; border-radius: 8px; margin: 20px 0; }
+        .footer { margin-top: 30px; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+    <h1>Order Confirmed!</h1>
+    <p>Hello, <strong>{{ user_name }}</strong>!</p>
+    <p>Thank you for your order. We have received it and it is being processed.</p>
+
+    <div class="order-info">
+        <p><strong>Order #:</strong> {{ order_id }}</p>
+        <p><strong>Total amount:</strong> ${{ total_amount }}</p>
+        <p><strong>Status:</strong> Pending</p>
+    </div>
+
+    <p>We will notify you when your order status changes.</p>
+
+    <div class="footer">
+        <p>This is an automated message, please do not reply to this email.</p>
+    </div>
+</body>
+</html>
