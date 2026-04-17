@@ -1,0 +1,78 @@
+# Docker build files — not needed inside the image itself
+**/Dockerfile*
+.dockerignore
+
+# Version control
+.git/
+.gitignore
+
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Environment files — never bake secrets into an image
+# These are injected at runtime via docker-compose env_file or secrets
+.env
+.env.*
+
+# Runtime-generated directories — mounted as Docker volumes instead
+backend/logs/
+backend/media/
+
+# Test and dev tools
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+
+# Study and utility scripts — not needed in production image
+show_tree.py
+study_fastapi.py
+tree_filtered.txt
+pyproject.toml
+debug_sql.py
+init_db.py
+
+# SQLite dev database — production uses PostgreSQL
+*.sqlite3
+*.sqlite
+*.db
+
+# Celery Beat runtime files — generated at runtime, not part of the image
+celerybeat-schedule
+celerybeat.pid
+
+# Compiled C extensions and log files
+*.so
+*.log
+
+# Drivers folder
+drivers/
