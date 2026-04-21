@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.db import Base
@@ -18,8 +18,11 @@ class Review(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"), nullable=False)
     comment: Mapped[str | None] = mapped_column(String, nullable=True)
+    # server_default=func.now() sets the timestamp at the DB level in UTC.
+    # Previously used default=datetime.now (Python-side, no timezone) which is
+    # unreliable across timezones and inconsistent with other timestamp fields.
     comment_date: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now, nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     grade: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 to 5
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
