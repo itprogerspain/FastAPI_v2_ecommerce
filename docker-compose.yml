@@ -23,7 +23,7 @@ services:
   # ----------------------------------------------------------
   postgres:
     image: postgres:16-alpine
-    env_file: .env
+    env_file: .env.docker
     # The official postgres image reads POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
     # from the container environment, which is populated by env_file above.
     volumes:
@@ -60,7 +60,7 @@ services:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
-    env_file: .env
+    env_file: .env.docker
     volumes:
       # Shared media volume — nginx reads from it, backend writes to it
       - media:/app/backend/media
@@ -83,7 +83,7 @@ services:
       dockerfile: docker/celery/Dockerfile
     command:
       ["celery", "-A", "app.core.celery.celery_app", "worker", "--loglevel=info"]
-    env_file: .env
+    env_file: .env.docker
     volumes:
       # Worker may generate media (e.g. product images) and write logs
       - media:/app/backend/media
@@ -106,7 +106,7 @@ services:
       dockerfile: docker/celery/Dockerfile
     command:
       ["celery", "-A", "app.core.celery.celery_app", "beat", "--loglevel=info"]
-    env_file: .env
+    env_file: .env.docker
     volumes:
       - logs:/app/backend/logs
     depends_on:
@@ -125,7 +125,7 @@ services:
       dockerfile: docker/celery/Dockerfile
     command:
       ["celery", "-A", "app.core.celery.celery_app", "flower", "--port=5555"]
-    env_file: .env
+    env_file: .env.docker
     ports:
       - "5555:5555"
     depends_on:
