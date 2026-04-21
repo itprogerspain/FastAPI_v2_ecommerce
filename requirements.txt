@@ -27,6 +27,7 @@ fastapi-mail==1.6.2
 fastar==0.8.0
 flower==2.0.1
 greenlet==3.3.0
+gunicorn==25.3.0
 h11==0.16.0
 httpcore==1.0.9
 httptools==0.7.1
