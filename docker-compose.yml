@@ -144,12 +144,12 @@ services:
   #   - Handles WebSocket upgrade (ws:// connections to /ws/*)
   # ----------------------------------------------------------
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
     ports:
       - "80:80"
     volumes:
-      # Mount our nginx config — :ro so nginx can't accidentally modify it
-      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       # Share the media volume — nginx serves files directly, read-only
       - media:/app/backend/media:ro
     depends_on:
