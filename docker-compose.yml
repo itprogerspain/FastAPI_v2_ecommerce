@@ -1,12 +1,167 @@
-# docker-compose.yml will include the following services:
-# - backend    : FastAPI application
-# - postgres   : PostgreSQL database
-# - redis      : Redis broker for Celery
-# - worker     : Celery worker (processes background tasks)
-# - beat       : Celery beat scheduler (triggers periodic tasks)
-# - nginx      : Reverse proxy
-# - flower     : Celery monitoring UI (http://localhost:5555)
-#                TODO: add Flower service for real-time Celery monitoring
-#                      use official image: mher/flower
-#                      command: celery -A app.core.celery.celery_app flower
-#                      depends_on: redis, worker
+version: "3.9"
+
+# ============================================================
+# Full stack for the FastAPI e-commerce project.
+#
+# Services:
+#   postgres  — PostgreSQL database
+#   redis     — Redis broker and result backend for Celery
+#   backend   — FastAPI application (uvicorn, 2 workers)
+#   worker    — Celery worker (processes background tasks)
+#   beat      — Celery beat scheduler (triggers periodic tasks)
+#   flower    — Celery monitoring UI (http://localhost:5555)
+#   nginx     — Reverse proxy — serves media files and routes traffic to backend
+#
+# All secrets and config are injected at runtime via env_file (.env).
+# Volumes persist data across container restarts.
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # PostgreSQL database
+  # ----------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    env_file: .env
+    # The official postgres image reads POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+    # from the container environment, which is populated by env_file above.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # $$VAR escapes the $ so Compose doesn't try to substitute it —
+      # the real $POSTGRES_USER / $POSTGRES_DB are resolved inside the container shell.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Redis — Celery broker and result backend
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # FastAPI backend
+  # ----------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    env_file: .env
+    volumes:
+      # Shared media volume — nginx reads from it, backend writes to it
+      - media:/app/backend/media
+      # Logs are written at runtime — mount as named volume so they persist
+      - logs:/app/backend/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Celery worker — processes background tasks
+  # (email sending, rating recalculation, order auto-cancel, etc.)
+  # ----------------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: docker/celery/Dockerfile
+    command:
+      ["celery", "-A", "app.core.celery.celery_app", "worker", "--loglevel=info"]
+    env_file: .env
+    volumes:
+      # Worker may generate media (e.g. product images) and write logs
+      - media:/app/backend/media
+      - logs:/app/backend/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Celery beat — periodic task scheduler
+  # Triggers scheduled tasks (e.g. abandoned-cart reminder at 10:00 daily).
+  # Only one beat instance should run at a time to avoid duplicate schedules.
+  # ----------------------------------------------------------
+  beat:
+    build:
+      context: .
+      dockerfile: docker/celery/Dockerfile
+    command:
+      ["celery", "-A", "app.core.celery.celery_app", "beat", "--loglevel=info"]
+    env_file: .env
+    volumes:
+      - logs:/app/backend/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Flower — real-time Celery monitoring UI
+  # Dashboard available at http://localhost:5555
+  # Shows task history, worker status, queue lengths.
+  # ----------------------------------------------------------
+  flower:
+    build:
+      context: .
+      dockerfile: docker/celery/Dockerfile
+    command:
+      ["celery", "-A", "app.core.celery.celery_app", "flower", "--port=5555"]
+    env_file: .env
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+      # worker must be up so Flower can discover registered tasks
+      worker:
+        condition: service_started
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # Nginx — reverse proxy and media file server
+  # Listens on port 80 and:
+  #   - Serves /media/* directly from the shared media volume (no Python overhead)
+  #   - Proxies all other requests to the backend container on port 8000
+  #   - Handles WebSocket upgrade (ws:// connections to /ws/*)
+  # ----------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      # Mount our nginx config — :ro so nginx can't accidentally modify it
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Share the media volume — nginx serves files directly, read-only
+      - media:/app/backend/media:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+
+# ============================================================
+# Named volumes — persist data across container restarts and recreations.
+# ============================================================
+volumes:
+  postgres_data:   # PostgreSQL data files
+  redis_data:      # Redis persistence (AOF / RDB snapshots)
+  media:           # Uploaded product images and user avatars
+  logs:            # Application and Celery logs (Loguru output)

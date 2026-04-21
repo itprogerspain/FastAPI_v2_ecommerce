@@ -10,6 +10,7 @@ from .routers import (
     reviews,
     pages,
     ws,
+    messages,
 )
 
 # Main router for API version 1
@@ -22,7 +23,8 @@ api_v1_router.include_router(users.router)
 api_v1_router.include_router(reviews.router)
 api_v1_router.include_router(cart.router)
 api_v1_router.include_router(orders.router)
-# api_v1_router.include_router(profiles.router)
+api_v1_router.include_router(profiles.router)
 # api_v1_router.include_router(pages.router)
 # api_v1_router.include_router(auth.router)
+api_v1_router.include_router(messages.router)
 api_v1_router.include_router(ws.router)

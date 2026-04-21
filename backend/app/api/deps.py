@@ -19,6 +19,10 @@ from app.infrastructure.repositories.cart import CartRepository
 from app.application.cart.service import CartService
 from app.infrastructure.repositories.order import OrderRepository
 from app.application.orders.service import OrderService
+from app.infrastructure.repositories.profile import ProfileRepository
+from app.application.profiles.service import ProfileService
+from app.infrastructure.repositories.message import MessageRepository
+from app.application.messages.service import MessageService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token")
 
@@ -96,6 +100,26 @@ async def get_order_service(
         cart_repository=cart_repo,
         db_session=db,
     )
+
+
+async def get_profile_service(
+    db: AsyncSession = Depends(get_async_db),
+) -> ProfileService:
+    """
+    Dependency that provides ProfileService instance using an async session.
+    """
+    repository = ProfileRepository(db)
+    return ProfileService(repository)
+
+
+async def get_message_service(
+    db: AsyncSession = Depends(get_async_db),
+) -> MessageService:
+    """
+    Dependency that provides MessageService instance using an async session.
+    """
+    repository = MessageRepository(db)
+    return MessageService(repository)
 
 
 async def get_current_user(
